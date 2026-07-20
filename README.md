@@ -339,91 +339,192 @@ Si el resultado se calcula correctamente y, al revisar la Spark Application UI (
 
 ---
 
-## 16. Anexo: Configuración real de red utilizada (Wi-Fi + Redirección de puertos)
-
+## 16. Anexo: Configuración real de red utilizada (Wi-Fi doméstica + Red Bridged en Multipass)
+ 
 Esta sección documenta cómo se resolvió la conexión real entre las 4 computadoras en la práctica, incluyendo los problemas encontrados durante la implementación y cómo se solucionaron. Se incluye porque el comportamiento real difiere del escenario ideal (red cableada/VPN dedicada) y es importante dejarlo registrado para el sustento del proyecto.
-
+ 
 ### 16.1. Contexto de la red usada
-
-Las 4 computadoras se conectaron a través de la **red Wi-Fi doméstica** (`192.168.1.x`), no mediante cable de red ni una VPN dedicada. Esto tiene una consecuencia importante:
-
-> **El uso de Wi-Fi en vez de una conexión cableada introduce mayor latencia, jitter (variación de latencia) y, ocasionalmente, pérdida de paquetes.** Esto se reflejó directamente en el cluster: en las pruebas se observaron workers que pasaban de `ALIVE` a `DEAD` de forma intermitente, tareas que tardaban mucho más de lo esperado, y ejecuciones que parecían "colgarse" sin motivo aparente.
-
-*(Aquí puedes insertar la captura del `ipconfig` mostrando la IP de Wi-Fi, 192.168.1.171)*
-
-### 16.2. El problema de fondo: doble capa de red
-
-Cada VM de Multipass vive dentro de una red interna de Hyper-V (por ejemplo `172.20.210.42`), que **no es directamente alcanzable** desde las otras computadoras de la red Wi-Fi — solo la computadora que la contiene puede verla directamente. Para que las otras 3 máquinas pudieran llegar a los servicios de Spark (Master, Worker, Driver, UIs), fue necesario **redirigir puertos** desde la IP de Windows (visible en la red Wi-Fi) hacia la IP interna de la VM.
-
+ 
+Las 4 computadoras se conectaron a través de la **red Wi-Fi de una casa** (`192.168.1.x`), no la red de una universidad ni una red corporativa. Esto fue importante para la decisión de conexión: al ser una red doméstica, **no existen bloqueos de puertos ni políticas de firewall restrictivas** como sí suelen existir en redes institucionales, lo que permitió usar el enfoque más simple posible: red en modo **bridged (puente)**, en vez de NAT con redirección de puertos.
+ 
+> **Aun así, seguir usando Wi-Fi en vez de cable introduce mayor latencia y variación de latencia (jitter) que una red cableada**, lo cual sigue explicando parte de la inestabilidad observada en las pruebas (workers que pasan de `ALIVE` a `DEAD`, tareas más lentas de lo esperado).
+ 
+*(Aquí puedes insertar la captura del `ipconfig`/`ip addr` mostrando la IP real de la Wi-Fi de casa asignada a cada VM)*
+ 
+### 16.2. Por qué se usó red "bridged" en vez de NAT + redirección de puertos
+ 
+Por defecto, Multipass crea cada VM detrás de una red NAT interna (por ejemplo, del switch de Hyper-V), con una IP que **solo la computadora que la contiene puede alcanzar** directamente (ej. `172.20.210.42`). Para que las otras 3 computadoras físicas pudieran llegar a esa VM, existían dos opciones:
+ 
+1. Mantener la VM en NAT y redirigir manualmente cada puerto desde la IP de Windows hacia la IP interna de la VM (`netsh interface portproxy` + reglas de firewall).
+2. **Conectar la VM directamente a la red física de la casa (bridged), para que tenga su propia IP real dentro del rango `192.168.1.x`**, visible sin traducciones para las demás computadoras.
+Al no existir bloqueo de puertos en la red de casa, se optó por la **opción 2 (bridged)**, ya que es más simple, evita mantener decenas de reglas de `portproxy`, y refleja mejor un cluster "real" donde cada nodo tiene su propia dirección de red.
+ 
 ```mermaid
 flowchart LR
-    A[Computadora 2 / Wi-Fi] -->|192.168.1.171:7077| B[Windows Master]
-    B -->|netsh portproxy| C[VM Master 172.20.210.42:7077]
+    R[Router de la casa] --- M[VM Master 192.168.1.50]
+    R --- W1[VM Worker 1 192.168.1.51]
+    R --- W2[VM Worker 2 192.168.1.52]
+    R --- W3[VM Worker 3 192.168.1.53]
 ```
-
-### 16.3. Puertos redirigidos en la máquina Master (Windows, PowerShell como Administrador)
-
+ 
+### 16.3. Configurar la red bridged — en Windows (PowerShell), en las 4 computadoras
+ 
+Antes de crear o relanzar cada VM, se identifica el adaptador de red físico que Multipass puede usar como puente:
+ 
 ```powershell
-netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=7077 connectaddress=172.20.210.42 connectport=7077
-netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=8081 connectaddress=172.20.210.42 connectport=8081
-netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=4040 connectaddress=172.20.210.42 connectport=4040
-netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=8080 connectaddress=172.20.210.42 connectport=8080
-netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=42000 connectaddress=172.20.210.42 connectport=42000
-netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=42001 connectaddress=172.20.210.42 connectport=42001
+multipass networks
 ```
-
-Y las reglas de firewall correspondientes para permitir el tráfico entrante:
-
+ 
+Esto muestra los adaptadores disponibles (por ejemplo `Wi-Fi` o `Ethernet`). Se anota el nombre exacto que aparece en cada computadora.
+ 
+> **Importante:** Multipass no permite agregar una red bridged a una VM que ya existe en modo NAT. Si la VM ya estaba creada, hay que **relanzarla** (crearla de nuevo) indicando la red desde el inicio:
+ 
 ```powershell
-netsh advfirewall firewall add rule name="SparkMaster" dir=in action=allow protocol=TCP localport=7077,8081,4040
-netsh advfirewall firewall add rule name="ZeppelinUI" dir=in action=allow protocol=TCP localport=8080
-netsh advfirewall firewall add rule name="SparkDriver" dir=in action=allow protocol=TCP localport=42000,42001
+multipass launch 24.04 --name spark-lab --cpus 4 --memory 4G --disk 40G --network name="Wi-Fi",mode=manual
 ```
-
-*(Aquí puedes insertar la captura de PowerShell mostrando estas reglas aplicadas y el `netsh interface portproxy show v4tov4`)*
-
-### 16.4. Puertos redirigidos en cada máquina Worker
-
-De forma equivalente, en cada computadora Worker se redirigieron los puertos propios del proceso `Worker`:
-
-```powershell
-netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=7078 connectaddress=<IP_VM_WORKER> connectport=7078
-netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=8082 connectaddress=<IP_VM_WORKER> connectport=8082
-netsh advfirewall firewall add rule name="SparkWorker" dir=in action=allow protocol=TCP localport=7078,8082
+ 
+(se reemplaza `"Wi-Fi"` por el nombre exacto obtenido con `multipass networks`)
+ 
+*(Aquí puedes insertar la captura de `multipass networks` y del comando `multipass launch` con la red bridged)*
+ 
+### 16.4. Configurar la IP dentro de cada VM (dentro de `multipass shell`)
+ 
+Una vez dentro de la VM, se agrega la interfaz adicional (`extra0`) para que tome IP por DHCP directamente del router de la casa:
+ 
+```bash
+sudo nano /etc/netplan/10-custom.yaml
 ```
-
-*(Aquí puedes insertar la captura de esto ejecutado en un worker)*
-
-### 16.5. Configurar el Driver para anunciar la IP correcta
-
-Como Zeppelin (el driver) corre dentro de la VM Master, pero necesita ser alcanzado desde las otras 3 computadoras por Wi-Fi, se configuró explícitamente en el intérprete de Spark (Zeppelin → Interpreter → spark):
-
-| Propiedad | Valor |
+ 
+```yaml
+network:
+  version: 2
+  ethernets:
+    extra0:
+      dhcp4: true
+```
+ 
+```bash
+sudo netplan apply
+ip addr show extra0
+```
+ 
+La IP que aparece ahí (ej. `192.168.1.50`) es la IP real dentro de la red de casa, y es la que se usa entre todas las máquinas de aquí en adelante — **ya no se necesita ninguna redirección de puertos**.
+ 
+*(Aquí puedes insertar la captura de `ip addr show extra0` mostrando la IP asignada por el router)*
+ 
+### 16.5. Qué comando corre el Master (dentro de su VM)
+ 
+```bash
+export SPARK_HOME=/opt/spark
+export MASTER_IP=192.168.1.50   # la IP bridged real de esta VM
+ 
+$SPARK_HOME/sbin/start-master.sh --host $MASTER_IP --webui-port 8081
+```
+ 
+Verificación desde cualquier máquina de la red:
+ 
+```bash
+curl http://192.168.1.50:8081
+```
+ 
+Debe devolver el HTML de la Master UI. La URL del cluster para los workers queda como `spark://192.168.1.50:7077`.
+ 
+### 16.6. Qué comando corre cada Worker (dentro de su propia VM)
+ 
+Antes de arrancar, cada worker confirma que alcanza al master por red:
+ 
+```bash
+ping 192.168.1.50
+nc -zv 192.168.1.50 7077
+```
+ 
+Y luego se conecta:
+ 
+```bash
+$SPARK_HOME/sbin/start-worker.sh spark://192.168.1.50:7077
+```
+ 
+Para evitar puertos aleatorios y facilitar cualquier verificación posterior, se fijaron los puertos del worker en `spark-env.sh` (Master y Workers):
+ 
+```bash
+export SPARK_WORKER_PORT=7078
+export SPARK_WORKER_WEBUI_PORT=8082
+```
+ 
+### 16.7. Firewall interno de Ubuntu (dentro de cada VM)
+ 
+Aunque la red de casa no bloquea puertos desde el router, algunas instalaciones de Ubuntu traen `ufw` activo por defecto dentro de la VM. Por precaución se habilitaron los puertos de Spark en cada máquina:
+ 
+**En el Master:**
+```bash
+sudo ufw allow 7077/tcp
+sudo ufw allow 8081/tcp
+sudo ufw allow 4040/tcp
+sudo ufw allow 7078/tcp
+```
+ 
+**En cada Worker:**
+```bash
+sudo ufw allow 7078/tcp
+sudo ufw allow 8082/tcp
+```
+ 
+### 16.8. Resumen de dónde se ejecuta cada comando
+ 
+Un punto de confusión frecuente durante la práctica fue no distinguir si un comando se corre en **Windows** o **dentro de la VM de Ubuntu** (recordar que cada una de las 4 computadoras tiene Windows por fuera y Multipass/Ubuntu por dentro):
+ 
+| Acción | Dónde se ejecuta |
 |---|---|
-| `spark.driver.host` | IP de Windows del Master (ej. `192.168.1.171`) |
-| `spark.driver.bindAddress` | IP interna de la VM Master (ej. `172.20.210.42`) |
-| `spark.driver.port` | `42000` |
-| `spark.blockManager.port` | `42001` |
-
-*(Aquí puedes insertar la captura de esta configuración en el intérprete de Zeppelin)*
-
-> **Por qué dos IPs distintas:** `bindAddress` es la interfaz en la que el proceso realmente escucha (la de la VM), mientras que `host` es la dirección que se le comunica a los workers para que sepan a dónde responder (la de Windows, que sí es visible en la red Wi-Fi). Sin este ajuste, los workers no podían encontrar al driver y las tareas se quedaban colgadas indefinidamente.
-
-### 16.6. Problemas encontrados durante las pruebas y su solución
-
+| `multipass networks`, `multipass launch`, `multipass shell` | Windows (PowerShell) |
+| Configurar `netplan`, obtener la IP bridged, `ufw` | Dentro de la VM (ya con `multipass shell`) |
+| `start-master.sh` / `start-worker.sh` | Dentro de la VM |
+| Ver la Spark UI / Master UI desde el navegador | Windows, abriendo `http://192.168.1.50:8081` normal |
+| `multipass transfer` (copiar el CSV a la VM) | Windows (PowerShell), hacia la ruta interna de la VM |
+ 
+### 16.9. Confirmar que el worker se registró
+ 
+Desde el navegador de cualquier computadora de la red:
+ 
+```text
+http://192.168.1.50:8081
+```
+ 
+Debe listar cada worker con sus cores y memoria reales, sin necesidad de reglas de `portproxy` ni de configurar `spark.driver.host`/`spark.driver.bindAddress` por separado — al tener IP real bridged, el driver y los workers se ven directamente.
+ 
+*(Aquí puedes insertar la captura de la Master UI mostrando los 3 workers ALIVE con IPs `192.168.1.x`)*
+ 
+### 16.10. Transferencia del archivo CSV a cada VM
+ 
+Para llevar el dataset a cada máquina (o solo al Master, según cómo se decida repartir la lectura), se usó `multipass transfer` desde Windows, tras crear la carpeta de destino dentro de la VM:
+ 
+```powershell
+multipass exec spark-lab -- sudo mkdir -p /data
+multipass exec spark-lab -- sudo chown ubuntu:ubuntu /data
+multipass transfer "C:\Users\usuario\Downloads\crimenes.csv" spark-lab:/data/crimenes.csv
+```
+ 
+Verificación dentro de la VM:
+ 
+```bash
+ls -lh /data/crimenes.csv
+```
+ 
+### 16.11. Problemas encontrados durante las pruebas y su solución
+ 
 | Problema observado | Causa | Solución aplicada |
 |---|---|---|
 | Un worker aparecía como **DEAD** en la Master UI de forma intermitente | Inestabilidad propia del Wi-Fi (latencia variable, microcortes) sumada a timeouts por defecto de Spark, muy cortos para este tipo de red | Se aumentaron los timeouts: `spark.network.timeout=300s`, `spark.executor.heartbeatInterval=60s`, `spark.worker.timeout=180`, `spark.rpc.askTimeout=300s`, `spark.rpc.lookupTimeout=300s` |
-| Un executor cargaba mucho más trabajo que los otros (ej. 4/4 cores usados en un worker mientras otro solo usaba 2/4) | Los recursos de Spark (`executor.cores`, `executor.memory`) nunca se configuraron explícitamente, por lo que el reparto no era uniforme | Se fijaron `spark.executor.cores` y `spark.executor.memory` de forma explícita en el intérprete, en función de los recursos reales de cada VM |
-| Un stage se quedaba "congelado" en la Spark UI (ej. 0/43 tareas pendientes, 1 tarea corriendo sin avanzar) | El driver anunciaba una IP no alcanzable por los workers (la interna de la VM en vez de la de Windows) | Se configuró `spark.driver.host` con la IP de Windows y se agregaron las reglas de `portproxy` |
-| Lectura del CSV de 5 GB muy lenta o inconsistente entre ejecuciones | Doble escaneo del archivo por `inferSchema=true`, agravado por la latencia de Wi-Fi | Se reemplazó `inferSchema` por un `StructType` con el schema definido manualmente |
-
+| Un executor cargaba mucho más trabajo que los otros | Los recursos de Spark (`executor.cores`, `executor.memory`) nunca se configuraron explícitamente, por lo que el reparto no era uniforme | Se fijaron `spark.executor.cores` y `spark.executor.memory` de forma explícita, según los recursos reales de cada VM |
+| Error al transferir el CSV a una VM (`la carpeta /data no existe`) | La carpeta de destino nunca se había creado dentro de esa VM | Se creó la carpeta con `multipass exec ... mkdir -p /data` antes de repetir la transferencia |
+| Lectura del CSV muy lenta o inconsistente entre ejecuciones | Doble escaneo del archivo por `inferSchema=true`, agravado por la latencia de Wi-Fi | Se reemplazó `inferSchema` por un `StructType` con el schema definido manualmente |
+| Alguna tarea individual mucho más lenta que el resto (straggler) | Variabilidad normal de una red Wi-Fi doméstica | Se activó **speculation** (`spark.speculation=true`) para que Spark relance automáticamente la copia de una tarea rezagada en otro executor |
+ 
 *(Aquí puedes insertar la captura de la Master UI mostrando un worker en estado DEAD, y luego la captura donde ya aparece ALIVE tras aplicar la solución)*
-
-### 16.7. Limitación reconocida del proyecto
-
-Se documenta como limitación conocida que, al usar **Wi-Fi en vez de una red cableada**, el rendimiento del cluster es notablemente menor al que se obtendría con Ethernet o una VPN de baja latencia (como ZeroTier o Tailscale). Esto se refleja en tiempos de lectura más variables y en la necesidad de aumentar los timeouts de Spark para tolerar la inestabilidad de la red inalámbrica.
-
+ 
+### 16.12. Limitación reconocida del proyecto
+ 
+Se documenta como limitación conocida que, al usar **Wi-Fi doméstica en vez de una red cableada**, el rendimiento del cluster es notablemente menor al que se obtendría con Ethernet. Aunque la red bridged eliminó la necesidad de redirección de puertos, la latencia inherente del Wi-Fi sigue explicando los tiempos de ejecución más variables y la necesidad de aumentar los timeouts de Spark para tolerar la inestabilidad de la red inalámbrica.
+ 
 ---
 
 ## 17. Anexo: Decisión de reducir el dataset de 5 GB a 2 GB para el EDA
