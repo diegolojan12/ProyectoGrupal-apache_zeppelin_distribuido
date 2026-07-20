@@ -559,56 +559,57 @@ Se documenta como limitación conocida que, al usar **Wi-Fi doméstica en vez de
 ---
 
 ## 17. Anexo: Decisión de reducir el dataset de 5 GB a 2 GB para el EDA
-
-Durante la fase de Análisis Exploratorio de Datos (EDA) se tomó la decisión de **reducir el tamaño del archivo de trabajo de 5 GB a 2 GB**. Esta sección documenta el motivo de este cambio.
-
+ 
+Durante la fase de Análisis Exploratorio de Datos (EDA) se tomó la decisión de **reemplazar el dataset original de ~5 GB por un dataset distinto de ~2 GB**: se pasó del archivo de eventos de e-commerce (`2019-Oct.csv`) al dataset público de criminalidad **`Crimes_-_2001_to_Present.csv`**, que en su tamaño original ya pesa aproximadamente 2 GB. Esta sección documenta el motivo de este cambio.
+ 
 ### 17.1. Motivo del cambio
-
+ 
 Aunque el cluster ya lograba conectar correctamente sus 4 nodos (1 Master + 3 Workers) y ejecutar lecturas del CSV completo, el procesamiento de los **5 GB** resultaba **demasiado pesado para los recursos reales disponibles**, considerando en conjunto:
-
+ 
 - Los recursos limitados de cada VM (CPU y memoria repartidos entre 4 máquinas domésticas, no servidores dedicados).
 - La latencia y variabilidad de la red **Wi-Fi** utilizada para conectar las 4 computadoras (documentada en la sección 16), que ralentiza cualquier operación que requiera comunicación entre nodos (shuffles, agregaciones, consolidación de resultados).
-- Que el objetivo del proyecto es el **EDA** (análisis exploratorio: estadísticas descriptivas, nulos, distribuciones, correlaciones), un tipo de trabajo que no requiere el dataset completo para obtener conclusiones representativas — un subconjunto de 2 GB es suficiente para extraer patrones y características del dataset sin comprometer la validez del análisis.
-
+- Que el objetivo del proyecto es el **EDA** (análisis exploratorio: estadísticas descriptivas, nulos, distribuciones, correlaciones), un tipo de trabajo que no requiere necesariamente 5 GB de datos para obtener conclusiones representativas y con valor analítico.
 En otras palabras: **5 GB era técnicamente procesable, pero no práctico** para el hardware y la red disponibles en este laboratorio, generando tiempos de espera excesivos y mayor probabilidad de que algún worker se cayera por timeout durante operaciones largas.
-
-### 17.2. Cómo se generó el archivo reducido
-
-A partir del archivo original de 5 GB, se generó un subconjunto de aproximadamente 2 GB manteniendo la estructura y representatividad de los datos. Por ejemplo, tomando un porcentaje de las filas originales:
-
-```scala
-val dfCompleto = spark.read
-  .option("header", "true")
-  .schema(schema)
-  .csv("/data/2019-Oct.csv")
-
-// Se conserva una fracción representativa del dataset original (~40%, ajustable
-// según el tamaño final deseado), usando una semilla fija para reproducibilidad
-val dfReducido = dfCompleto.sample(withReplacement = false, fraction = 0.4, seed = 42)
-
-dfReducido.write
-  .option("header", "true")
-  .mode("overwrite")
-  .csv("/data/2019-Oct-reducido")
+ 
+### 17.2. Dataset final utilizado
+ 
+En vez de generar una muestra reducida del archivo original mediante código (por ejemplo con `sample()` en Spark), se optó por una solución más simple: **usar directamente un dataset público distinto cuyo tamaño natural ya era de aproximadamente 2 GB**, sin necesidad de recortarlo artificialmente.
+ 
+| Detalle | Valor |
+|---|---|
+| Nombre del archivo | `Crimes_-_2001_to_Present.csv` |
+| Tamaño aproximado | ~2 GB |
+| Naturaleza del dataset | Registro histórico de crímenes reportados (Chicago Police Department, 2001–presente) |
+ 
+*(Aquí puedes insertar la captura de la descarga del archivo, mostrando su tamaño y progreso)*
+ 
+### 17.3. Distribución del nuevo archivo a los 4 nodos
+ 
+Al tratarse de un archivo distinto (no una versión recortada del anterior), fue necesario repetir el proceso de distribución descrito en la sección 16.10: para cada una de las 4 máquinas virtuales, se creó la carpeta `/data` y se clonó (copió) el archivo `Crimes_-_2001_to_Present.csv` dentro de ella, de manera que las 4 VMs (Master + 3 Workers) tuvieran una copia idéntica en la misma ruta:
+ 
+```powershell
+multipass exec spark-lab -- sudo mkdir -p /data
+multipass exec spark-lab -- sudo chown ubuntu:ubuntu /data
+multipass transfer "C:\Users\usuario\Downloads\Crimes_-_2001_to_Present.csv" spark-lab:/data/Crimes_-_2001_to_Present.csv
 ```
-
-*(Aquí puedes insertar la captura del comando ejecutándose y del tamaño final del archivo, por ejemplo con `du -sh /data/2019-Oct-reducido`)*
-
-### 17.3. Resultado de la reducción
-
-| | Archivo original | Archivo usado para el EDA |
+ 
+(este proceso se repite en cada una de las 4 computadoras, apuntando a su propia VM)
+ 
+### 17.4. Resultado del cambio de dataset
+ 
+| | Dataset original (e-commerce) | Dataset usado para el EDA |
 |---|---|---|
+| Archivo | `2019-Oct.csv` | `Crimes_-_2001_to_Present.csv` |
 | Tamaño | ~5 GB | ~2 GB |
-| Filas | Dataset completo | Muestra representativa |
 | Tiempo de lectura + procesamiento | Alto, con riesgo de timeouts en Wi-Fi | Notablemente menor y más estable |
-| Validez para el EDA | — | Suficiente para estadísticas descriptivas y distribuciones representativas |
-
-*(Aquí puedes insertar la captura de la Spark UI comparando los tiempos de ejecución con el archivo de 2 GB, mostrando las tareas completándose sin quedarse colgadas)*
-
-### 17.4. Justificación académica
-
-Reducir el volumen de datos para el EDA es una práctica común y válida cuando el objetivo es entender la estructura, calidad y distribución de los datos, y no calcular un resultado exacto y exhaustivo sobre el 100% del dataset (como sí sería necesario, por ejemplo, para un reporte financiero final o un modelo de producción). Esta decisión permitió avanzar con el análisis dentro de las limitaciones reales de infraestructura del laboratorio, sin invalidar los hallazgos del EDA.
-
+| Validez para el EDA | — | Dataset completo, público y representativo de un dominio distinto (criminalidad en vez de e-commerce) |
+ 
+*(Aquí puedes insertar la captura de la Spark UI mostrando la lectura del archivo de 2 GB completándose sin quedarse colgada)*
+ 
+### 17.5. Justificación académica
+ 
+Ajustar el volumen de datos de trabajo a los recursos reales disponibles es una práctica válida en un entorno de laboratorio con hardware doméstico. Al optar por un dataset completo de menor tamaño en vez de forzar el procesamiento de uno más pesado, se garantiza que el EDA se pueda ejecutar de forma **completa e íntegra** (sin muestreo ni pérdida de filas), evitando además los cuellos de botella de red identificados en la sección 16.
+ 
 ---
 
 ## 18. Conclusión
