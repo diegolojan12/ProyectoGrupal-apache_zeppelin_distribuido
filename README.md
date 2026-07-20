@@ -3,8 +3,6 @@ Integrantes: Jhordy Camacas, Diego Loján, Jesús Rivas y Santiago Matute
 
 # Informe de Instalación — Cluster Spark Distribuido con Multipass y Zeppelin
 
-# Informe de Instalación — Cluster Spark Distribuido con Multipass y Zeppelin
-
 **Proyecto:** Análisis Exploratorio de Datos (EDA) distribuido sobre un archivo CSV de gran tamaño
 **Arquitectura:** 1 máquina Master + 3 máquinas Worker (4 computadoras en total), cada una con una VM Ubuntu en Multipass
 
