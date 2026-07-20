@@ -612,6 +612,173 @@ Ajustar el volumen de datos de trabajo a los recursos reales disponibles es una 
  
 ---
 
+## 18. Resultados del EDA ejecutado en el cluster
+ 
+Esta sección documenta los resultados reales obtenidos al ejecutar el Análisis Exploratorio de Datos sobre el dataset `Crimes_-_2001_to_Present.csv`, corriendo en el notebook de Zeppelin (`orube1`) distribuido sobre los 4 nodos del cluster (Master + 3 Workers).
+ 
+### 18.1. Verificación inicial del cluster
+ 
+Antes de trabajar con el dataset, se verificó que el cluster respondiera correctamente con pruebas simples:
+ 
+```scala
+%spark
+sc.version
+```
+Resultado: `4.1.2`
+ 
+```scala
+%spark
+val datos = spark.range(0, 100000000, 1, 12)
+println("Particiones: " + datos.rdd.getNumPartitions)
+val pares = datos.filter($"id" % 2 === 0)
+println("Pares: " + pares.count())
+```
+Resultado: **12 particiones**, **50,000,000 números pares** sobre 100 millones de registros generados — confirmando que el cluster distribuye y procesa correctamente antes de tocar el CSV real.
+ 
+### 18.2. Carga del dataset
+ 
+```scala
+%spark
+val RUTA = "/data/crimenes.csv"
+val dfRaw = spark.read.option("header", "true").csv(RUTA)
+ 
+println(s"Filas: ${dfRaw.count()} | Columnas: ${dfRaw.columns.length}")
+dfRaw.printSchema()
+dfRaw.show(5, false)
+```
+ 
+**Resultado:**
+ 
+| Métrica | Valor |
+|---|---|
+| Filas | **8,596,454** |
+| Columnas | **22** |
+ 
+Esquema del dataset (`Crimes_-_2001_to_Present.csv`):
+ 
+```text
+root
+ |-- ID: string
+ |-- Case Number: string
+ |-- Date: string
+ |-- Block: string
+ |-- IUCR: string
+ |-- Primary Type: string
+ |-- Description: string
+ |-- Location Description: string
+ |-- Arrest: string
+ |-- Domestic: string
+ |-- Beat: string
+ |-- District: string
+ |-- Ward: string
+ |-- Community Area: string
+ |-- FBI Code: string
+ |-- X Coordinate: string
+ |-- Y Coordinate: string
+ |-- Year: string
+ |-- Updated On: string
+ |-- Latitude: string
+ |-- Longitude: string
+ |-- Location: string
+```
+ 
+*(Aquí puedes insertar la captura del `df.show(5, false)` con las primeras filas del dataset)*
+ 
+### 18.3. Top de tipos de crimen (`Primary Type`)
+ 
+```scala
+%spark
+import org.apache.spark.sql.functions._
+ 
+val topCrimenes = df.groupBy("Primary Type")
+  .count()
+  .orderBy(desc("count"))
+  .limit(15)
+ 
+z.show(topCrimenes)
+```
+ 
+| Primary Type | Total |
+|---|---|
+| THEFT | 1,826,137 |
+| BATTERY | 1,566,015 |
+| CRIMINAL DAMAGE | 976,604 |
+| NARCOTICS | 768,539 |
+| ASSAULT | 579,524 |
+| OTHER OFFENSE | 537,092 |
+| BURGLARY | 455,080 |
+| MOTOR VEHICLE THEFT | 444,216 |
+| DECEPTIVE PRACTICE | 399,700 |
+| ROBBERY | 317,972 |
+| CRIMINAL TRESPASS | 230,726 |
+| WEAPONS VIOLATION | 128,415 |
+| PROSTITUTION | 70,524 |
+| OFFENSE INVOLVING CHILDREN | 61,753 |
+| PUBLIC PEACE VIOLATION | 55,675 |
+ 
+**Hallazgo:** el hurto (`THEFT`) y las agresiones (`BATTERY`) concentran, por sí solos, más del 39% de los registros del dataset.
+ 
+*(Aquí puedes insertar la captura del gráfico de barras generado por Zeppelin para esta tabla)*
+ 
+### 18.4. Proporción de arrestos (`Arrest`)
+ 
+```scala
+%spark
+val arrestos = df.groupBy("Arrest").count()
+z.show(arrestos)
+```
+ 
+| Arrest | Total |
+|---|---|
+| false | 6,443,946 |
+| true | 2,152,508 |
+ 
+**Hallazgo:** solo alrededor del **25%** de los crímenes reportados terminaron en un arresto — la gran mayoría (75%) quedó sin detención registrada.
+ 
+### 18.5. Consultas SQL sobre el dataset (`%sql`)
+ 
+Se registró el DataFrame como vista temporal para poder consultarlo con SQL directamente desde Zeppelin:
+ 
+```scala
+%spark
+df.createOrReplaceTempView("crimenes")
+```
+ 
+**Top 10 lugares donde ocurren los crímenes (`Location Description`):**
+ 
+```sql
+%sql
+SELECT `Location Description`, COUNT(1) AS Total
+FROM crimenes
+WHERE `Location Description` IS NOT NULL
+GROUP BY `Location Description`
+ORDER BY Total DESC
+LIMIT 10
+```
+ 
+| Location Description | Total |
+|---|---|
+| STREET | 2,247,906 |
+| RESIDENCE | 1,403,968 |
+| APARTMENT | 1,035,804 |
+| SIDEWALK | 770,362 |
+| OTHER | 269,917 |
+| PARKING LOT/GARAGE (NON. RESID.) | 202,913 |
+| ALLEY | 190,953 |
+| SMALL RETAIL STORE | 175,375 |
+| SCHOOL, PUBLIC, BUILDING | 146,365 |
+| RESTAURANT | 145,359 |
+ 
+**Hallazgo:** la vía pública (`STREET`) y las viviendas (`RESIDENCE`, `APARTMENT`) concentran la mayoría de los incidentes, coherente con que `THEFT` y `BATTERY` sean los tipos de crimen más comunes.
+ 
+*(Aquí puedes insertar la captura del gráfico de barras de Zeppelin para este resultado)*
+ 
+### 18.6. Evidencia de ejecución distribuida real
+ 
+Las URLs de la Spark UI que Zeppelin adjunta a cada job (visibles en el notebook, ej. `http://172.29.113.169:4040/jobs/job?id=18`) confirman que estas consultas se ejecutaron realmente sobre el cluster distribuido (con la IP bridged de una de las VMs), y no en modo local — validando que toda la arquitectura documentada en las secciones 1 a 17 funcionó de punta a punta para producir estos resultados.
+ 
+---
+
 ## 18. Conclusión
 
 Con esta arquitectura, el procesamiento del CSV se reparte entre los executors de las 4 máquinas físicas, en vez de depender de una sola computadora. Solo la máquina Master necesita el notebook de Zeppelin, ya que actúa como punto único de entrada (driver) para todo el cluster; las máquinas Worker únicamente requieren Spark instalado para poder recibir y ejecutar las tareas asignadas. Además, ante las limitaciones reales de hardware y de red (Wi-Fi) del laboratorio, se ajustó el volumen de datos de 5 GB a 2 GB para garantizar que el EDA pudiera completarse de forma estable y en tiempos razonables., el procesamiento del CSV de 5 GB se reparte entre los executors de las 4 máquinas físicas, en vez de depender de una sola computadora. Solo la máquina Master necesita el notebook de Zeppelin, ya que actúa como punto único de entrada (driver) para todo el cluster; las máquinas Worker únicamente requieren Spark instalado para poder recibir y ejecutar las tareas asignadas.
