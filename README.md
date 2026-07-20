@@ -47,8 +47,9 @@ flowchart TB
     SM <--> SW2
     SM <--> SW3
 ```
+<img width="1280" height="661" alt="image" src="https://github.com/user-attachments/assets/10ebaf63-e5ce-48c3-b3fb-029fa1f6c0af" />
 
-*(Aquí puedes insertar tu captura del diagrama de arquitectura o de las 4 VMs abiertas en Multipass)*
+
 
 ---
 
