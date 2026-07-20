@@ -208,7 +208,7 @@ Obtener la URL del master (se necesita en el siguiente paso):
 spark://<IP_DEL_MASTER>:7077
 ```
 
-*(Aquí puedes insertar la captura de la Spark Master UI mostrando "Status: ALIVE")*
+
 
 ---
 
