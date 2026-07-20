@@ -85,7 +85,6 @@ Verificar que la instancia quedó creada:
 multipass list
 ```
 
-*(Aquí puedes insertar la captura de `multipass list` mostrando las 4 VMs)*
 
 Entrar a la VM:
 
@@ -152,7 +151,8 @@ source ~/.bashrc
 spark-shell --version
 ```
 
-*(Aquí puedes insertar la captura del `spark-shell --version` corriendo en cada máquina)*
+<img width="1111" height="302" alt="image" src="https://github.com/user-attachments/assets/05691463-ceaa-4a8a-9477-707f93f3ecc3" />
+
 
 ---
 
