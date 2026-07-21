@@ -52,10 +52,25 @@ flowchart TB
 
 
 ---
+## 3. Cambio de version de Windows
+- Previamente al desarrollo del proyecto se requirio cambiar de version de Windows Home a Windows Pro, debido a que con el Windows Home, no se permite usar
+  el Hyper-V, lo que causa errores dentro de Multipass.
+  
+  ### Para cambiar de version se siguieron los siguientes pasos:
+  Este comando ejecuta el ejecutable nativo de Windows changepk.exe (Change Product Key), encargado de gestionar la conversión y actualización de ediciones del sistema operativo sin necesidad de reinstalar
+  - changepk.exe /productkey VK7JG-NPHTM-C97JM-9MPGT-3V66T
+ 
+  Esta línea de comandos de PowerShell descarga y ejecuta directamente en memoria un script automatizado para la activación de productos de Microsoft (conocido como Microsoft Activation Scripts o MAS)
+  - irm https://get.activated.win/ | iex
 
+  ### Advertencia:
+    El uso de comandos como irm | iex implica la descarga y ejecución directa de código desde servidores externos sin verificación previa, lo que representa un alto riesgo de seguridad en redes corporativas o de producción ante posibles interceptaciones o alteraciones de la fuente; del mismo modo, forzar el cambio de edición con claves genéricas mediante changepk.exe y activar el sistema con scripts no oficiales vulnera los términos de licencia y políticas de cumplimiento (EULA) de Microsoft, por lo que este procedimiento debe limitarse estrictamente a entornos educativos, de prueba o laboratorios aislados
+
+  
 ## 3. Requisitos previos (en las 4 computadoras)
 
-- Sistema operativo Windows con **Multipass** instalado (usando Hyper-V como hipervisor).
+
+- Sistema operativo Windows Pro con **Multipass** instalado (usando Hyper-V como hipervisor).
 - Conexión de red entre las 4 computadoras físicas (misma red LAN).
 - Recursos recomendados por VM: 4 CPUs, 4-8 GB de RAM, 40 GB de disco.
 
@@ -334,11 +349,11 @@ Si el resultado se calcula correctamente y, al revisar la Spark Application UI (
 
 | Componente | Máquina Master | Máquina Worker 1 | Máquina Worker 2 | Máquina Worker 3 |
 |---|---|---|---|---|
-| Java | ✅ | ✅ | ✅ | ✅ |
-| Apache Spark | ✅ | ✅ | ✅ | ✅ |
-| Apache Zeppelin | ✅ (única instalación) | ❌ | ❌ | ❌ |
-| Proceso `Master` | ✅ | ❌ | ❌ | ❌ |
-| Proceso `Worker` | ❌ (opcional) | ✅ | ✅ | ✅ |
+| Java | Si | Si | Si | Si |
+| Apache Spark | Si | Si | Si | Si |
+| Apache Zeppelin | Si (única instalación) | No | No | No |
+| Proceso `Master` | Si | No | No | No |
+| Proceso `Worker` | opcional | Si | Si | Si |
 
 ---
 
@@ -551,7 +566,14 @@ Se debe confirmar que el **tamaño en bytes coincide** en las 4 máquinas — un
 | Lectura del CSV muy lenta o inconsistente entre ejecuciones | Doble escaneo del archivo por `inferSchema=true`, agravado por la latencia de Wi-Fi | Se reemplazó `inferSchema` por un `StructType` con el schema definido manualmente |
 | Alguna tarea individual mucho más lenta que el resto (straggler) | Variabilidad normal de una red Wi-Fi doméstica | Se activó **speculation** (`spark.speculation=true`) para que Spark relance automáticamente la copia de una tarea rezagada en otro executor |
 
-*(Aquí puedes insertar la captura de la Master UI mostrando un worker en estado DEAD, y luego la captura donde ya aparece ALIVE tras aplicar la solución)*
+- 2 Procesos vivos, 1 muerto y 1 sin iniciarse aun:
+  
+<img width="1600" height="135" alt="image" src="https://github.com/user-attachments/assets/e54e8aa0-6ef6-4d55-9a16-7a9416865181" />
+
+- Todos los procesos vivos:
+
+<img width="1600" height="827" alt="image" src="https://github.com/user-attachments/assets/470ea4f1-1e19-4c6a-923d-4906e791cb40" />
+
 
 ### 16.12. Limitación reconocida del proyecto
 
