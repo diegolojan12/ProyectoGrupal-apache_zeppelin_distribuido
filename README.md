@@ -67,7 +67,7 @@ flowchart TB
     El uso de comandos como irm | iex implica la descarga y ejecución directa de código desde servidores externos sin verificación previa, lo que representa un alto riesgo de seguridad en redes corporativas o de producción ante posibles interceptaciones o alteraciones de la fuente; del mismo modo, forzar el cambio de edición con claves genéricas mediante changepk.exe y activar el sistema con scripts no oficiales vulnera los términos de licencia y políticas de cumplimiento (EULA) de Microsoft, por lo que este procedimiento debe limitarse estrictamente a entornos educativos, de prueba o laboratorios aislados
 
   
-## 3. Requisitos previos (en las 4 computadoras)
+## 4. Requisitos previos (en las 4 computadoras)
 
 
 - Sistema operativo Windows Pro con **Multipass** instalado (usando Hyper-V como hipervisor).
@@ -82,7 +82,7 @@ multipass version
 
 ---
 
-## 4. Creación de la máquina virtual (en las 4 computadoras)
+## 5. Creación de la máquina virtual (en las 4 computadoras)
 
 En cada una de las 4 computadoras se crea una VM Ubuntu 24.04:
 
@@ -102,7 +102,7 @@ multipass list
 
 ---
 
-## 5. Instalación base común (Java + herramientas) — en las 4 máquinas
+## 6. Instalación base común (Java + herramientas) — en las 4 máquinas
 
 Independientemente del rol (Master o Worker), **todas** las VMs necesitan Java y Spark. Este paso se repite igual en las 4.
 
@@ -133,7 +133,7 @@ source ~/.bashrc
 
 ---
 
-## 6. Instalación de Apache Spark — en las 4 máquinas
+## 7. Instalación de Apache Spark — en las 4 máquinas
 
 Este paso también es idéntico en Master y Workers, ya que todos necesitan el binario de Spark para poder ejecutar el proceso correspondiente (`Master` en una, `Worker` en las otras dos).
 
@@ -164,7 +164,7 @@ spark-shell --version
 
 ---
 
-## 7. Configuración de red — en las 4 máquinas
+## 8. Configuración de red — en las 4 máquinas
 
 Para que las 4 VMs puedan verse entre sí de forma estable, cada una debe anunciar su propia IP real dentro de la red compartida (no `localhost`).
 
@@ -196,7 +196,7 @@ export SPARK_MASTER_HOST=<IP_DEL_MASTER>
 
 ---
 
-## 8. Levantar el proceso Master — solo en la máquina Master
+## 9. Levantar el proceso Master — solo en la máquina Master
 
 ```bash
 $SPARK_HOME/sbin/start-master.sh --webui-port 8081
@@ -220,7 +220,7 @@ spark://<IP_DEL_MASTER>:7077
 
 ---
 
-## 9. Levantar el proceso Worker — solo en las 3 máquinas Worker
+## 10. Levantar el proceso Worker — solo en las 3 máquinas Worker
 
 En **cada** VM Worker, apuntando a la IP del Master:
 
@@ -238,7 +238,7 @@ Debe aparecer `Worker` en la lista.
 
 ---
 
-## 10. Verificación del cluster completo
+## 11. Verificación del cluster completo
 
 Desde el navegador de cualquiera de las 4 computadoras:
 
@@ -252,7 +252,7 @@ En la tabla **Workers** deben aparecer los 3 workers en estado **ALIVE**, con su
 
 ---
 
-## 11. Instalación de Apache Zeppelin — SOLO en la máquina Master
+## 12. Instalación de Apache Zeppelin — SOLO en la máquina Master
 
 Este es el paso que diferencia a la máquina Master del resto: **solo aquí se instala Zeppelin**, ya que es el notebook desde donde se escribe y ejecuta el código que se distribuye hacia los workers.
 
@@ -272,7 +272,7 @@ export PATH=$ZEPPELIN_HOME/bin:$PATH
 
 ---
 
-## 12. Configuración de Zeppelin para conectarse al cluster — solo en el Master
+## 13. Configuración de Zeppelin para conectarse al cluster — solo en el Master
 
 ```bash
 cd $ZEPPELIN_HOME/conf
@@ -300,7 +300,7 @@ En `zeppelin-site.xml`, habilitar que el servidor escuche en todas las interface
 
 ---
 
-## 13. Iniciar Zeppelin — solo en el Master
+## 14. Iniciar Zeppelin — solo en el Master
 
 ```bash
 $ZEPPELIN_HOME/bin/zeppelin-daemon.sh start
@@ -323,7 +323,7 @@ http://<IP_DEL_MASTER>:8080
 
 ---
 
-## 14. Prueba final del cluster distribuido
+## 15. Prueba final del cluster distribuido
 
 Desde un notebook nuevo en Zeppelin, ejecutar:
 
@@ -339,7 +339,7 @@ Si el resultado se calcula correctamente y, al revisar la Spark Application UI (
 
 ---
 
-## 15. Resumen de responsabilidades por máquina
+## 16. Resumen de responsabilidades por máquina
 
 | Componente | Máquina Master | Máquina Worker 1 | Máquina Worker 2 | Máquina Worker 3 |
 |---|---|---|---|---|
@@ -351,11 +351,11 @@ Si el resultado se calcula correctamente y, al revisar la Spark Application UI (
 
 ---
 
-## 16. Anexo: Configuración real de red utilizada (Wi-Fi doméstica + Red Bridged en Multipass)
+## 17. Anexo: Configuración real de red utilizada (Wi-Fi doméstica + Red Bridged en Multipass)
 
 Esta sección documenta cómo se resolvió la conexión real entre las 4 computadoras en la práctica, incluyendo los problemas encontrados durante la implementación y cómo se solucionaron. Se incluye porque el comportamiento real difiere del escenario ideal (red cableada/VPN dedicada) y es importante dejarlo registrado para el sustento del proyecto.
 
-### 16.1. Contexto de la red usada
+### 17.1. Contexto de la red usada
 
 Las 4 computadoras se conectaron a través de la **red Wi-Fi de una casa** (`192.168.1.x`), no la red de una universidad ni una red corporativa. Esto fue importante para la decisión de conexión: al ser una red doméstica, **no existen bloqueos de puertos ni políticas de firewall restrictivas** como sí suelen existir en redes institucionales, lo que permitió usar el enfoque más simple posible: red en modo **bridged (puente)**, en vez de NAT con redirección de puertos.
 
@@ -369,7 +369,7 @@ Las 4 computadoras se conectaron a través de la **red Wi-Fi de una casa** (`192
 
 <img width="612" height="140" alt="image" src="https://github.com/user-attachments/assets/3d397971-eef5-40b2-9cc3-82645a689ff9" />
 
-### 16.2. Por qué se usó red "bridged" en vez de NAT + redirección de puertos
+### 17.2. Por qué se usó red "bridged" en vez de NAT + redirección de puertos
 
 Por defecto, Multipass crea cada VM detrás de una red NAT interna (por ejemplo, del switch de Hyper-V), con una IP que **solo la computadora que la contiene puede alcanzar** directamente (ej. `172.20.210.42`). Para que las otras 3 computadoras físicas pudieran llegar a esa VM, existían dos opciones:
 
@@ -386,7 +386,7 @@ flowchart LR
     R --- W3[VM Worker 3 192.168.1.53]
 ```
 
-### 16.3. Configurar la red bridged — en Windows (PowerShell), en las 4 computadoras
+### 17.3. Configurar la red bridged — en Windows (PowerShell), en las 4 computadoras
 
 Antes de crear o relanzar cada VM, se identifica el adaptador de red físico que Multipass puede usar como puente:
 
@@ -406,7 +406,7 @@ multipass launch 24.04 --name spark-lab --cpus 4 --memory 4G --disk 40G --networ
 
 *(Aquí puedes insertar la captura de `multipass networks` y del comando `multipass launch` con la red bridged)*
 
-### 16.4. Configurar la IP dentro de cada VM (dentro de `multipass shell`)
+### 17.4. Configurar la IP dentro de cada VM (dentro de `multipass shell`)
 
 Una vez dentro de la VM, se agrega la interfaz adicional (`extra0`) para que tome IP por DHCP directamente del router de la casa:
 
@@ -431,7 +431,7 @@ La IP que aparece ahí (ej. `192.168.1.50`) es la IP real dentro de la red de ca
 
 *(Aquí puedes insertar la captura de `ip addr show extra0` mostrando la IP asignada por el router)*
 
-### 16.5. Qué comando corre el Master (dentro de su VM)
+### 17.5. Qué comando corre el Master (dentro de su VM)
 
 ```bash
 export SPARK_HOME=/opt/spark
@@ -448,7 +448,7 @@ curl http://192.168.1.50:8081
 
 Debe devolver el HTML de la Master UI. La URL del cluster para los workers queda como `spark://192.168.1.50:7077`.
 
-### 16.6. Qué comando corre cada Worker (dentro de su propia VM)
+### 17.6. Qué comando corre cada Worker (dentro de su propia VM)
 
 Antes de arrancar, cada worker confirma que alcanza al master por red:
 
@@ -470,7 +470,7 @@ export SPARK_WORKER_PORT=7078
 export SPARK_WORKER_WEBUI_PORT=8082
 ```
 
-### 16.7. Firewall interno de Ubuntu (dentro de cada VM)
+### 17.7. Firewall interno de Ubuntu (dentro de cada VM)
 
 Aunque la red de casa no bloquea puertos desde el router, algunas instalaciones de Ubuntu traen `ufw` activo por defecto dentro de la VM. Por precaución se habilitaron los puertos de Spark en cada máquina:
 
@@ -488,7 +488,7 @@ sudo ufw allow 7078/tcp
 sudo ufw allow 8082/tcp
 ```
 
-### 16.8. Resumen de dónde se ejecuta cada comando
+### 17.8. Resumen de dónde se ejecuta cada comando
 
 Un punto de confusión frecuente durante la práctica fue no distinguir si un comando se corre en **Windows** o **dentro de la VM de Ubuntu** (recordar que cada una de las 4 computadoras tiene Windows por fuera y Multipass/Ubuntu por dentro):
 
@@ -500,7 +500,7 @@ Un punto de confusión frecuente durante la práctica fue no distinguir si un co
 | Ver la Spark UI / Master UI desde el navegador | Windows, abriendo `http://192.168.1.50:8081` normal |
 | `multipass transfer` (copiar el CSV a la VM) | Windows (PowerShell), hacia la ruta interna de la VM |
 
-### 16.9. Confirmar que el worker se registró
+### 17.9. Confirmar que el worker se registró
 
 Desde el navegador de cualquier computadora de la red:
 
@@ -512,7 +512,7 @@ Debe listar cada worker con sus cores y memoria reales, sin necesidad de reglas 
 
 *(Aquí puedes insertar la captura de la Master UI mostrando los 3 workers ALIVE con IPs `192.168.1.x`)*
 
-### 16.10. Distribución del archivo CSV a TODOS los nodos (paso obligatorio)
+### 17.10. Distribución del archivo CSV a TODOS los nodos (paso obligatorio)
 
 Un punto clave que no es evidente al principio: en **Spark Standalone sin HDFS** (como en este proyecto), no existe un sistema de archivos distribuido de fondo. Cada **worker** lee su propia partición del archivo **directamente desde su propio disco local**, usando la misma ruta que se indica en el código (ej. `/data/crimenes.csv`). Esto significa que:
 
@@ -556,7 +556,7 @@ Se debe confirmar que el **tamaño en bytes coincide** en las 4 máquinas — un
 
 > **Nota:** este paso de copiar el archivo a los 3 workers explica, en retrospectiva, uno de los primeros errores del proyecto (documentado al inicio de la práctica): cuando el archivo solo existía en el Master, los workers no podían acceder a su partición y las lecturas se comportaban de forma inconsistente. Copiar el archivo a los 4 nodos con la misma ruta fue, junto con la red bridged, uno de los dos requisitos indispensables para que el cluster funcionara.
 
-### 16.11. Problemas encontrados durante las pruebas y su solución
+### 17.11. Problemas encontrados durante las pruebas y su solución
 
 | Problema observado | Causa | Solución aplicada |
 |---|---|---|
@@ -574,17 +574,17 @@ Se debe confirmar que el **tamaño en bytes coincide** en las 4 máquinas — un
 <img width="1600" height="827" alt="image" src="https://github.com/user-attachments/assets/470ea4f1-1e19-4c6a-923d-4906e791cb40" />
 
 
-### 16.12. Limitación reconocida del proyecto
+### 17.12. Limitación reconocida del proyecto
 
 Se documenta como limitación conocida que, al usar **Wi-Fi doméstica en vez de una red cableada**, el rendimiento del cluster es notablemente menor al que se obtendría con Ethernet. Aunque la red bridged eliminó la necesidad de redirección de puertos, la latencia inherente del Wi-Fi sigue explicando los tiempos de ejecución más variables y la necesidad de aumentar los timeouts de Spark para tolerar la inestabilidad de la red inalámbrica.
 
 ---
 
-## 17. Anexo: Decisión de reducir el dataset de 5 GB a 2 GB para el EDA
+## 18. Anexo: Decisión de reducir el dataset de 5 GB a 2 GB para el EDA
  
 Durante la fase de Análisis Exploratorio de Datos (EDA) se tomó la decisión de **reemplazar el dataset original de ~5 GB por un dataset distinto de ~2 GB**: se pasó del archivo de eventos de e-commerce (`2019-Oct.csv`) al dataset público de criminalidad **`Crimes_-_2001_to_Present.csv`**, que en su tamaño original ya pesa aproximadamente 2 GB. Esta sección documenta el motivo de este cambio.
  
-### 17.1. Motivo del cambio
+### 18.1. Motivo del cambio
  
 Aunque el cluster ya lograba conectar correctamente sus 4 nodos (1 Master + 3 Workers) y ejecutar lecturas del CSV completo, el procesamiento de los **5 GB** resultaba **demasiado pesado para los recursos reales disponibles**, considerando en conjunto:
  
@@ -593,7 +593,7 @@ Aunque el cluster ya lograba conectar correctamente sus 4 nodos (1 Master + 3 Wo
 - Que el objetivo del proyecto es el **EDA** (análisis exploratorio: estadísticas descriptivas, nulos, distribuciones, correlaciones), un tipo de trabajo que no requiere necesariamente 5 GB de datos para obtener conclusiones representativas y con valor analítico.
 En otras palabras: **5 GB era técnicamente procesable, pero no práctico** para el hardware y la red disponibles en este laboratorio, generando tiempos de espera excesivos y mayor probabilidad de que algún worker se cayera por timeout durante operaciones largas.
  
-### 17.2. Dataset final utilizado
+### 18.2. Dataset final utilizado
  
 En vez de generar una muestra reducida del archivo original mediante código (por ejemplo con `sample()` en Spark), se optó por una solución más simple: **usar directamente un dataset público distinto cuyo tamaño natural ya era de aproximadamente 2 GB**, sin necesidad de recortarlo artificialmente.
  
@@ -604,7 +604,7 @@ En vez de generar una muestra reducida del archivo original mediante código (po
 | Naturaleza del dataset | Registro histórico de crímenes reportados (Chicago Police Department, 2001–presente) |
  
  
-### 17.3. Distribución del nuevo archivo a los 4 nodos
+### 18.3. Distribución del nuevo archivo a los 4 nodos
  
 Al tratarse de un archivo distinto (no una versión recortada del anterior), fue necesario repetir el proceso de distribución descrito en la sección 16.10: para cada una de las 4 máquinas virtuales, se creó la carpeta `/data` y se clonó (copió) el archivo `Crimes_-_2001_to_Present.csv` dentro de ella, de manera que las 4 VMs (Master + 3 Workers) tuvieran una copia idéntica en la misma ruta:
  
@@ -617,7 +617,7 @@ multipass transfer "C:\Users\usuario\Downloads\Crimes_-_2001_to_Present.csv" spa
  
 (este proceso se repite en cada una de las 4 computadoras, apuntando a su propia VM)
  
-### 17.4. Resultado del cambio de dataset
+### 18.4. Resultado del cambio de dataset
  
 | | Dataset original (e-commerce) | Dataset usado para el EDA |
 |---|---|---|
@@ -629,17 +629,17 @@ multipass transfer "C:\Users\usuario\Downloads\Crimes_-_2001_to_Present.csv" spa
 <img width="1600" height="767" alt="image" src="https://github.com/user-attachments/assets/2fbe95ea-6aa8-4b71-8ade-be9debca245b" />
 
  
-### 17.5. Justificación académica
+### 18.5. Justificación académica
  
 Ajustar el volumen de datos de trabajo a los recursos reales disponibles es una práctica válida en un entorno de laboratorio con hardware doméstico. Al optar por un dataset completo de menor tamaño en vez de forzar el procesamiento de uno más pesado, se garantiza que el EDA se pueda ejecutar de forma **completa e íntegra** (sin muestreo ni pérdida de filas), evitando además los cuellos de botella de red identificados en la sección 16.
  
 ---
 
-## 18. Resultados del EDA ejecutado en el cluster
+## 19. Resultados del EDA ejecutado en el cluster
  
 Esta sección documenta los resultados reales obtenidos al ejecutar el Análisis Exploratorio de Datos sobre el dataset `Crimes_-_2001_to_Present.csv`, corriendo en el notebook de Zeppelin (`orube1`) distribuido sobre los 4 nodos del cluster (Master + 3 Workers).
  
-### 18.1. Verificación inicial del cluster
+### 19.1. Verificación inicial del cluster
  
 Antes de trabajar con el dataset, se verificó que el cluster respondiera correctamente con pruebas simples:
  
@@ -658,7 +658,7 @@ println("Pares: " + pares.count())
 ```
 Resultado: **12 particiones**, **50,000,000 números pares** sobre 100 millones de registros generados — confirmando que el cluster distribuye y procesa correctamente antes de tocar el CSV real.
  
-### 18.2. Carga del dataset
+### 19.2. Carga del dataset
  
 ```scala
 %spark
@@ -708,7 +708,7 @@ root
 <img width="1132" height="92" alt="image" src="https://github.com/user-attachments/assets/390397ec-e060-453b-b65f-391b1725502e" />
 
  
-### 18.3. Top de tipos de crimen (`Primary Type`)
+### 19.3. Top de tipos de crimen (`Primary Type`)
  
 ```scala
 %spark
@@ -745,7 +745,7 @@ z.show(topCrimenes)
 <img width="1211" height="274" alt="image" src="https://github.com/user-attachments/assets/b2f6bd93-94b4-4619-8088-6bdb436570c3" />
 
  
-### 18.4. Proporción de arrestos (`Arrest`)
+### 19.4. Proporción de arrestos (`Arrest`)
  
 ```scala
 %spark
@@ -760,7 +760,7 @@ z.show(arrestos)
  
 **Hallazgo:** solo alrededor del **25%** de los crímenes reportados terminaron en un arresto — la gran mayoría (75%) quedó sin detención registrada.
  
-### 18.5. Consultas SQL sobre el dataset (`%sql`)
+### 19.5. Consultas SQL sobre el dataset (`%sql`)
  
 Se registró el DataFrame como vista temporal para poder consultarlo con SQL directamente desde Zeppelin:
  
@@ -799,13 +799,13 @@ LIMIT 10
 <img width="1210" height="274" alt="image" src="https://github.com/user-attachments/assets/4b6c7054-361b-49de-b491-8c9d0635653f" />
 
  
-### 18.6. Evidencia de ejecución distribuida real
+### 19.6. Evidencia de ejecución distribuida real
  
 Las URLs de la Spark UI que Zeppelin adjunta a cada job (visibles en el notebook, ej. `http://172.29.113.169:4040/jobs/job?id=18`) confirman que estas consultas se ejecutaron realmente sobre el cluster distribuido (con la IP bridged de una de las VMs), y no en modo local — validando que toda la arquitectura documentada en las secciones 1 a 17 funcionó de punta a punta para producir estos resultados.
  
 ---
 
-## 18. Conclusión
+## 20. Conclusión
 
 Con esta arquitectura, el procesamiento del CSV se reparte entre los executors de las 4 máquinas físicas, en vez de depender de una sola computadora, solo la máquina Master necesita el notebook de Zeppelin, ya que actúa como punto único de entrada (driver) para todo el cluster las máquinas Worker únicamente requieren Spark instalado para poder recibir y ejecutar las tareas asignadas. 
 
