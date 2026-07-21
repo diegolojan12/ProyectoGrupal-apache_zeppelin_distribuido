@@ -237,6 +237,17 @@ jps
 
 Debe aparecer `Worker` en la lista.
 
+### Worker 1
+<img width="1600" height="1000" alt="image" src="https://github.com/user-attachments/assets/54136c03-e7b0-4faa-b00c-366bf8aa89f1" />
+
+### Worker 2
+
+<img width="1600" height="899" alt="image" src="https://github.com/user-attachments/assets/2a003683-3f2f-4572-a29f-b092c01694c3" />
+
+### Worker 3
+
+<img width="1600" height="999" alt="image" src="https://github.com/user-attachments/assets/2220740b-3e57-4223-9a02-6250bb0ea394" />
+
 ---
 
 ## 11. Verificación del cluster completo
