@@ -71,7 +71,7 @@ flowchart TB
 
 
 - Sistema operativo Windows Pro con **Multipass** instalado (usando Hyper-V como hipervisor).
-- Conexión de red entre las 4 computadoras físicas (misma red LAN).
+- Conexión de red entre las 4 computadoras físicas (misma red WiFi).
 - Recursos recomendados por VM: 4 CPUs, 4-8 GB de RAM, 40 GB de disco.
 
 Verificación de Multipass en cada equipo:
@@ -98,13 +98,6 @@ Verificar que la instancia quedó creada:
 
 ```bash
 multipass list
-```
-
-
-Entrar a la VM:
-
-```bash
-multipass shell spark-lab
 ```
 
 ---
