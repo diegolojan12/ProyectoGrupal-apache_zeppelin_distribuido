@@ -260,7 +260,7 @@ http://<IP_DEL_MASTER>:8081
 
 En la tabla **Workers** deben aparecer los 3 workers en estado **ALIVE**, con sus cores y memoria disponibles.
 
-*(Aquí puedes insertar la captura de la Spark Master UI mostrando los 3 workers ALIVE)*
+<img width="1280" height="661" alt="image" src="https://github.com/user-attachments/assets/10ebaf63-e5ce-48c3-b3fb-029fa1f6c0af" />
 
 ---
 
