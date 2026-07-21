@@ -705,7 +705,8 @@ root
  |-- Location: string
 ```
  
-*(Aquí puedes insertar la captura del `df.show(5, false)` con las primeras filas del dataset)*
+<img width="1132" height="92" alt="image" src="https://github.com/user-attachments/assets/390397ec-e060-453b-b65f-391b1725502e" />
+
  
 ### 18.3. Top de tipos de crimen (`Primary Type`)
  
