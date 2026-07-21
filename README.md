@@ -742,7 +742,8 @@ z.show(topCrimenes)
  
 **Hallazgo:** el hurto (`THEFT`) y las agresiones (`BATTERY`) concentran, por sí solos, más del 39% de los registros del dataset.
  
-*(Aquí puedes insertar la captura del gráfico de barras generado por Zeppelin para esta tabla)*
+<img width="1211" height="274" alt="image" src="https://github.com/user-attachments/assets/b2f6bd93-94b4-4619-8088-6bdb436570c3" />
+
  
 ### 18.4. Proporción de arrestos (`Arrest`)
  
@@ -795,7 +796,8 @@ LIMIT 10
  
 **Hallazgo:** la vía pública (`STREET`) y las viviendas (`RESIDENCE`, `APARTMENT`) concentran la mayoría de los incidentes, coherente con que `THEFT` y `BATTERY` sean los tipos de crimen más comunes.
  
-*(Aquí puedes insertar la captura del gráfico de barras de Zeppelin para este resultado)*
+<img width="1210" height="274" alt="image" src="https://github.com/user-attachments/assets/4b6c7054-361b-49de-b491-8c9d0635653f" />
+
  
 ### 18.6. Evidencia de ejecución distribuida real
  
