@@ -556,7 +556,7 @@ Se debe confirmar que el **tamaño en bytes coincide** en las 4 máquinas — un
 
 > **Nota:** este paso de copiar el archivo a los 3 workers explica, en retrospectiva, uno de los primeros errores del proyecto (documentado al inicio de la práctica): cuando el archivo solo existía en el Master, los workers no podían acceder a su partición y las lecturas se comportaban de forma inconsistente. Copiar el archivo a los 4 nodos con la misma ruta fue, junto con la red bridged, uno de los dos requisitos indispensables para que el cluster funcionara.
 
-### 17.11. Problemas encontrados durante las pruebas y su solución
+### 17.11. Problemas encontrados durante las pruebas 
 
 | Problema observado | Causa | Solución aplicada |
 |---|---|---|
@@ -583,8 +583,66 @@ Se documenta como limitación conocida que, al usar **Wi-Fi doméstica en vez de
 ## 18. Anexo: Decisión de reducir el dataset de 5 GB a 2 GB para el EDA
  
 Durante la fase de Análisis Exploratorio de Datos (EDA) se tomó la decisión de **reemplazar el dataset original de ~5 GB por un dataset distinto de ~2 GB**: se pasó del archivo de eventos de e-commerce (`2019-Oct.csv`) al dataset público de criminalidad **`Crimes_-_2001_to_Present.csv`**, que en su tamaño original ya pesa aproximadamente 2 GB. Esta sección documenta el motivo de este cambio.
- 
-### 18.1. Motivo del cambio
+
+### 18.1. Problemas encontrados durante la instalación de Multipass
+
+Antes de llegar a la configuración estable del cluster, se presentaron varios problemas durante la instalación y primeros arranques de Multipass en una de las computadoras del equipo. Se documentan aquí porque explican parte del tiempo invertido al inicio del proyecto y porque pueden repetirse en instalaciones futuras.
+
+### 18.2. Resumen de problemas
+
+| Problema observado | Causa | Solución aplicada |
+|---|---|---|
+| La máquina virtual se trababa al momento de iniciarse y no llegaba a arrancar | Inestabilidad del proceso de arranque de Multipass en Windows | Reiniciar la computadora; si el problema persistía, era necesario desinstalar Multipass por completo y reinstalar todo desde cero |
+| La VM no iniciaba (arrojaba errores) al asignarle 6 GB de RAM o más | Limitación física de RAM disponible en los equipos usados | Reducir la memoria asignada a la VM a un valor acorde a los recursos reales del equipo |
+| Al borrar y reinstalar Multipass, quedaban archivos corruptos en `C:\ProgramData\Multipass\cache\vault\multipassd-image-records` | El proceso de desinstalación no limpiaba correctamente la caché de imágenes | Borrar manualmente el archivo corrupto en esa ruta antes de volver a iniciar la VM |
+| Error de hash al descargar la imagen base: `Hash of .../jammy-20260705/ubuntu-22.04-server-cloudimg-amd64.img does not match ...` | La imagen de Ubuntu descargada en caché quedó incompleta o corrupta (posiblemente por una descarga interrumpida) | Eliminar la imagen corrupta de `C:\ProgramData\Multipass\cache\vault\images\` para forzar una nueva descarga limpia |
+| `Restart-Service multipass` fallaba con *"No se puede abrir el servicio multipass"* | El servicio de Windows de Multipass no estaba registrado o no se instaló correctamente | Ver solución en la sección 21.2 |
+
+### 18.3. Detalle: fallo al reiniciar el servicio de Multipass
+
+Al intentar reiniciar el servicio manualmente para solucionar el arranque trabado, se obtuvo el siguiente error:
+
+```powershell
+Restart-Service multipass
+```
+
+```text
+Restart-Service : No se puede detener el servicio 'Multipass Service (multipass)' debido al error siguiente: No se
+puede abrir el servicio multipass en el equipo '.'.
+    + CategoryInfo          : CloseError: (System.ServiceProcess.ServiceController:ServiceController) [Restart-Service
+   ], ServiceCommandException
+    + FullyQualifiedErrorId : CouldNotStopService,Microsoft.PowerShell.Commands.RestartServiceCommand
+```
+
+Este error indica que PowerShell no logra encontrar/abrir el servicio de Windows llamado `multipass`, lo cual normalmente se debe a una de estas causas:
+
+- **Permisos insuficientes:** el comando no se ejecutó en una consola de PowerShell abierta como Administrador.
+- **Servicio no registrado:** una instalación incompleta o corrupta de Multipass no llegó a registrar el servicio en Windows.
+- **Servicio con nombre distinto:** en algunas versiones, el servicio no se llama exactamente `multipass`.
+
+**Pasos de verificación/solución recomendados:**
+
+```powershell
+# 1. Confirmar si el servicio existe y cómo se llama realmente
+Get-Service *multipass*
+
+# 2. Repetir el reinicio desde una consola abierta como Administrador
+# (clic derecho > "Ejecutar como administrador")
+Restart-Service multipass
+
+# 3. Si el servicio no aparece en el listado, reinstalar Multipass por completo
+```
+
+Si tras reinstalar el servicio sigue sin aparecer, se recomienda desinstalar Multipass desde "Aplicaciones", borrar manualmente cualquier residuo en `C:\ProgramData\Multipass\` y volver a instalar el paquete oficial desde cero.
+
+### 18.4. Evidencia
+
+<img width="893" height="220" alt="WhatsApp Image 2026-07-20 at 22 02 22" src="https://github.com/user-attachments/assets/d5f45a65-9847-4998-8430-03499b2969a5" />
+<img width="505" height="188" alt="WhatsApp Image 2026-07-20 at 22 03 06" src="https://github.com/user-attachments/assets/dc76061c-21fe-4997-b699-0a26ac287f93" />
+<img width="1461" height="812" alt="WhatsApp Image 2026-07-20 at 22 03 35" src="https://github.com/user-attachments/assets/0d3babdc-563e-47ca-9a8a-949a7b3f027d" />
+
+
+### 18.5. Motivo del cambio
  
 Aunque el cluster ya lograba conectar correctamente sus 4 nodos (1 Master + 3 Workers) y ejecutar lecturas del CSV completo, el procesamiento de los **5 GB** resultaba **demasiado pesado para los recursos reales disponibles**, considerando en conjunto:
  
@@ -593,7 +651,7 @@ Aunque el cluster ya lograba conectar correctamente sus 4 nodos (1 Master + 3 Wo
 - Que el objetivo del proyecto es el **EDA** (análisis exploratorio: estadísticas descriptivas, nulos, distribuciones, correlaciones), un tipo de trabajo que no requiere necesariamente 5 GB de datos para obtener conclusiones representativas y con valor analítico.
 En otras palabras: **5 GB era técnicamente procesable, pero no práctico** para el hardware y la red disponibles en este laboratorio, generando tiempos de espera excesivos y mayor probabilidad de que algún worker se cayera por timeout durante operaciones largas.
  
-### 18.2. Dataset final utilizado
+### 18.6. Dataset final utilizado
  
 En vez de generar una muestra reducida del archivo original mediante código (por ejemplo con `sample()` en Spark), se optó por una solución más simple: **usar directamente un dataset público distinto cuyo tamaño natural ya era de aproximadamente 2 GB**, sin necesidad de recortarlo artificialmente.
  
@@ -604,7 +662,7 @@ En vez de generar una muestra reducida del archivo original mediante código (po
 | Naturaleza del dataset | Registro histórico de crímenes reportados (Chicago Police Department, 2001–presente) |
  
  
-### 18.3. Distribución del nuevo archivo a los 4 nodos
+### 18.7. Distribución del nuevo archivo a los 4 nodos
  
 Al tratarse de un archivo distinto (no una versión recortada del anterior), fue necesario repetir el proceso de distribución descrito en la sección 16.10: para cada una de las 4 máquinas virtuales, se creó la carpeta `/data` y se clonó (copió) el archivo `Crimes_-_2001_to_Present.csv` dentro de ella, de manera que las 4 VMs (Master + 3 Workers) tuvieran una copia idéntica en la misma ruta:
  
@@ -617,7 +675,7 @@ multipass transfer "C:\Users\usuario\Downloads\Crimes_-_2001_to_Present.csv" spa
  
 (este proceso se repite en cada una de las 4 computadoras, apuntando a su propia VM)
  
-### 18.4. Resultado del cambio de dataset
+### 18.8. Resultado del cambio de dataset
  
 | | Dataset original (e-commerce) | Dataset usado para el EDA |
 |---|---|---|
@@ -629,7 +687,7 @@ multipass transfer "C:\Users\usuario\Downloads\Crimes_-_2001_to_Present.csv" spa
 <img width="1600" height="767" alt="image" src="https://github.com/user-attachments/assets/2fbe95ea-6aa8-4b71-8ade-be9debca245b" />
 
  
-### 18.5. Justificación académica
+### 18.9. Justificación académica
  
 Ajustar el volumen de datos de trabajo a los recursos reales disponibles es una práctica válida en un entorno de laboratorio con hardware doméstico. Al optar por un dataset completo de menor tamaño en vez de forzar el procesamiento de uno más pesado, se garantiza que el EDA se pueda ejecutar de forma **completa e íntegra** (sin muestreo ni pérdida de filas), evitando además los cuellos de botella de red identificados en la sección 16.
  
