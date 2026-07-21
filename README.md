@@ -318,7 +318,8 @@ Acceder desde el navegador de cualquier computadora:
 http://<IP_DEL_MASTER>:8080
 ```
 
-*(Aquí puedes insertar la captura de la interfaz web de Zeppelin ya abierta)*
+<img width="1278" height="292" alt="image" src="https://github.com/user-attachments/assets/6ff867a1-23b6-4c1a-89fa-66fd8745785a" />
+
 
 ---
 
