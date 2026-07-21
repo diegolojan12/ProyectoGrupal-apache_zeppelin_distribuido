@@ -216,6 +216,7 @@ Obtener la URL del master (se necesita en el siguiente paso):
 spark://<IP_DEL_MASTER>:7077
 ```
 
+<img width="1600" height="855" alt="image" src="https://github.com/user-attachments/assets/7f5facc6-b1ae-4d65-a400-ae6f99d505e4" />
 
 
 ---
