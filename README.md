@@ -360,7 +360,13 @@ Las 4 computadoras se conectaron a través de la **red Wi-Fi de una casa** (`192
 
 > **Aun así, seguir usando Wi-Fi en vez de cable introduce mayor latencia y variación de latencia (jitter) que una red cableada**, lo cual sigue explicando parte de la inestabilidad observada en las pruebas (workers que pasan de `ALIVE` a `DEAD`, tareas más lentas de lo esperado).
 
-*(Aquí puedes insertar la captura del `ipconfig`/`ip addr` mostrando la IP real de la Wi-Fi de casa asignada a cada VM)*
+- Buscar ip por defecto de cada VM:
+
+<img width="631" height="101" alt="image" src="https://github.com/user-attachments/assets/910dc90c-5131-4281-8279-04c294e3723c" />
+
+- Buscar ip real de la Wifi: 
+
+<img width="612" height="140" alt="image" src="https://github.com/user-attachments/assets/3d397971-eef5-40b2-9cc3-82645a689ff9" />
 
 ### 16.2. Por qué se usó red "bridged" en vez de NAT + redirección de puertos
 
@@ -553,10 +559,9 @@ Se debe confirmar que el **tamaño en bytes coincide** en las 4 máquinas — un
 
 | Problema observado | Causa | Solución aplicada |
 |---|---|---|
-| Un worker aparecía como **DEAD** en la Master UI de forma intermitente | Inestabilidad propia del Wi-Fi (latencia variable, microcortes) sumada a timeouts por defecto de Spark, muy cortos para este tipo de red | Se aumentaron los timeouts: `spark.network.timeout=300s`, `spark.executor.heartbeatInterval=60s`, `spark.worker.timeout=180`, `spark.rpc.askTimeout=300s`, `spark.rpc.lookupTimeout=300s` |
+| Un worker aparecía como **DEAD** en la Master UI de forma intermitente | Problemas con multipass con una maquina en especifico por la inestabilidad de la conexion entre la maquina y la red | Se reinicio la maquina, apagando todos los procesos y volviendo a iniciarlos |
 | Un executor cargaba mucho más trabajo que los otros | Los recursos de Spark (`executor.cores`, `executor.memory`) nunca se configuraron explícitamente, por lo que el reparto no era uniforme | Se fijaron `spark.executor.cores` y `spark.executor.memory` de forma explícita, según los recursos reales de cada VM |
 | Error al transferir el CSV a una VM (`la carpeta /data no existe`) | La carpeta de destino nunca se había creado dentro de esa VM | Se creó la carpeta con `multipass exec ... mkdir -p /data` antes de repetir la transferencia |
-| Lectura del CSV muy lenta o inconsistente entre ejecuciones | Doble escaneo del archivo por `inferSchema=true`, agravado por la latencia de Wi-Fi | Se reemplazó `inferSchema` por un `StructType` con el schema definido manualmente |
 | Alguna tarea individual mucho más lenta que el resto (straggler) | Variabilidad normal de una red Wi-Fi doméstica | Se activó **speculation** (`spark.speculation=true`) para que Spark relance automáticamente la copia de una tarea rezagada en otro executor |
 
 - 2 Procesos vivos, 1 muerto y 1 sin iniciarse aun:
@@ -597,15 +602,15 @@ En vez de generar una muestra reducida del archivo original mediante código (po
 | Tamaño aproximado | ~2 GB |
 | Naturaleza del dataset | Registro histórico de crímenes reportados (Chicago Police Department, 2001–presente) |
  
-*(Aquí puedes insertar la captura de la descarga del archivo, mostrando su tamaño y progreso)*
  
 ### 17.3. Distribución del nuevo archivo a los 4 nodos
  
 Al tratarse de un archivo distinto (no una versión recortada del anterior), fue necesario repetir el proceso de distribución descrito en la sección 16.10: para cada una de las 4 máquinas virtuales, se creó la carpeta `/data` y se clonó (copió) el archivo `Crimes_-_2001_to_Present.csv` dentro de ella, de manera que las 4 VMs (Master + 3 Workers) tuvieran una copia idéntica en la misma ruta:
  
 ```powershell
-multipass exec spark-lab -- sudo mkdir -p /data
-multipass exec spark-lab -- sudo chown ubuntu:ubuntu /data
+sudo mkdir -p /data
+sudo chown ubuntu:ubuntu /data
+-- Y en el cmd se hace un transfer:
 multipass transfer "C:\Users\usuario\Downloads\Crimes_-_2001_to_Present.csv" spark-lab:/data/Crimes_-_2001_to_Present.csv
 ```
  
@@ -620,7 +625,8 @@ multipass transfer "C:\Users\usuario\Downloads\Crimes_-_2001_to_Present.csv" spa
 | Tiempo de lectura + procesamiento | Alto, con riesgo de timeouts en Wi-Fi | Notablemente menor y más estable |
 | Validez para el EDA | — | Dataset completo, público y representativo de un dominio distinto (criminalidad en vez de e-commerce) |
  
-*(Aquí puedes insertar la captura de la Spark UI mostrando la lectura del archivo de 2 GB completándose sin quedarse colgada)*
+<img width="1600" height="767" alt="image" src="https://github.com/user-attachments/assets/2fbe95ea-6aa8-4b71-8ade-be9debca245b" />
+
  
 ### 17.5. Justificación académica
  
@@ -800,4 +806,6 @@ Las URLs de la Spark UI que Zeppelin adjunta a cada job (visibles en el notebook
 
 ## 18. Conclusión
 
-Con esta arquitectura, el procesamiento del CSV se reparte entre los executors de las 4 máquinas físicas, en vez de depender de una sola computadora. Solo la máquina Master necesita el notebook de Zeppelin, ya que actúa como punto único de entrada (driver) para todo el cluster; las máquinas Worker únicamente requieren Spark instalado para poder recibir y ejecutar las tareas asignadas. Además, ante las limitaciones reales de hardware y de red (Wi-Fi) del laboratorio, se ajustó el volumen de datos de 5 GB a 2 GB para garantizar que el EDA pudiera completarse de forma estable y en tiempos razonables., el procesamiento del CSV de 5 GB se reparte entre los executors de las 4 máquinas físicas, en vez de depender de una sola computadora. Solo la máquina Master necesita el notebook de Zeppelin, ya que actúa como punto único de entrada (driver) para todo el cluster; las máquinas Worker únicamente requieren Spark instalado para poder recibir y ejecutar las tareas asignadas.
+Con esta arquitectura, el procesamiento del CSV se reparte entre los executors de las 4 máquinas físicas, en vez de depender de una sola computadora, solo la máquina Master necesita el notebook de Zeppelin, ya que actúa como punto único de entrada (driver) para todo el cluster las máquinas Worker únicamente requieren Spark instalado para poder recibir y ejecutar las tareas asignadas. 
+
+Además, ante las limitaciones reales de hardware y de red (Wi-Fi) del laboratorio, se ajustó el volumen de datos de 5 GB a 2 GB para garantizar que el EDA pudiera completarse de forma estable y en tiempos razonables, el procesamiento del CSV de 5 GB se reparte entre los executors de las 4 máquinas físicas, en vez de depender de una sola computadora solo la máquina Master necesita el notebook de Zeppelin, ya que actúa como punto único de entrada (driver) para todo el cluster las máquinas Worker únicamente requieren Spark instalado para poder recibir y ejecutar las tareas asignadas.
