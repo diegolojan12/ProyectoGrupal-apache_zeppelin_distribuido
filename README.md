@@ -55,7 +55,9 @@ flowchart TB
 ## 3. Cambio de version de Windows
 - Previamente al desarrollo del proyecto se requirio cambiar de version de Windows Home a Windows Pro, debido a que con el Windows Home, no se permite usar
   el Hyper-V, lo que causa errores dentro de Multipass.
-  
+
+   <img width="900" height="1600" alt="image" src="https://github.com/user-attachments/assets/3bee4c16-d9d4-419b-913b-69f4b5f623e8" />
+ 
   ### Para cambiar de version se siguieron los siguientes pasos:
   Este comando ejecuta el ejecutable nativo de Windows changepk.exe (Change Product Key), encargado de gestionar la conversión y actualización de ediciones del sistema operativo sin necesidad de reinstalar
   - changepk.exe /productkey VK7JG-NPHTM-C97JM-9MPGT-3V66T
