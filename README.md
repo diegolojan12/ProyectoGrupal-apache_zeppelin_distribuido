@@ -334,6 +334,7 @@ http://<IP_DEL_MASTER>:8080
 
 <img width="1278" height="292" alt="image" src="https://github.com/user-attachments/assets/6ff867a1-23b6-4c1a-89fa-66fd8745785a" />
 
+<img width="1600" height="230" alt="image" src="https://github.com/user-attachments/assets/384d7554-44cd-4190-8ee3-b646c5271ac0" />
 
 ---
 
