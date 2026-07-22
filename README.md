@@ -666,7 +666,9 @@ Aunque el cluster ya lograba conectar correctamente sus 4 nodos (1 Master + 3 Wo
 En otras palabras: **5 GB era técnicamente procesable, pero no práctico** para el hardware y la red disponibles en este laboratorio, generando tiempos de espera excesivos y mayor probabilidad de que algún worker se cayera por timeout durante operaciones largas.
  
 ### 18.6. Dataset final utilizado
- 
+
+Link: https://www.kaggle.com/datasets/salikhussaini49/chicago-crimes-data
+
 En vez de generar una muestra reducida del archivo original mediante código (por ejemplo con `sample()` en Spark), se optó por una solución más simple: **usar directamente un dataset público distinto cuyo tamaño natural ya era de aproximadamente 2 GB**, sin necesidad de recortarlo artificialmente.
  
 | Detalle | Valor |
