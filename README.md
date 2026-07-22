@@ -200,6 +200,8 @@ export SPARK_MASTER_HOST=<IP_DEL_MASTER>
 
 ## 9. Levantar el proceso Master — solo en la máquina Master
 
+<img width="1600" height="237" alt="image" src="https://github.com/user-attachments/assets/39f8eb2c-9506-4667-85a0-cb67ada7fbac" />
+
 ```bash
 $SPARK_HOME/sbin/start-master.sh --webui-port 8081
 ```
